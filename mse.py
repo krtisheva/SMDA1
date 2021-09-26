@@ -5,17 +5,17 @@ from gen_data import f
 
 
 def input_data():
-    with open('modelled_data.txt', 'r') as f:
-        n = int(f.readline())
+    with open('modelled_data.txt', 'r') as f_in:
+        n = int(f_in.readline())
         x1 = []
         x2 = []
-        etta = []
-        for line in f:
+        y = []
+        for line in f_in:
             s = line.split()
             x1.append(float(s[0]))
             x2.append(float(s[1]))
-            etta.append(float(s[2]))
-    return n, x1, x2, etta
+            y.append(float(s[2]))
+    return n, x1, x2, y
 
 
 def fill_obs_matrix(n, x1, x2):
@@ -39,8 +39,11 @@ def dispersion(y, x, theta, n, m):
     dis = np.matmul(np.transpose(e), e) / (n - m)
     return dis
 
-def check_hypothesis(n, m, dis):
+
+def check_hypothesis(n, m, dis, dis_e):
     fisher_dist = scipy.stats.f.ppf(q=1-0.05, dfn=n-m, dfd=1000000)
-    dis_e = 0.23459062500000002
-    f = dis / dis_e
-    return 'Гипотеза не отвергается' if f <= fisher_dist else 'Модель неадекватна'
+    print("dis = %f" % dis)
+    print("dis_e = %f" % dis_e)
+    print("Табличное значение квантили F-распределения: %f" % fisher_dist)
+    print("Статистика: %f" % (dis / dis_e))
+    return 'Гипотеза не отвергается (F <= Ft)' if dis / dis_e <= fisher_dist else 'Модель неадекватна (F > Ft)'
