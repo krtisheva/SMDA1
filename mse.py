@@ -40,10 +40,9 @@ def dispersion(y, x, theta, n, m):
     return dis
 
 
-def check_hypothesis(n, m, dis, dis_e):
+def check_hypothesis(n, m, dis):
     fisher_dist = scipy.stats.f.ppf(q=1-0.05, dfn=n-m, dfd=1000000)
-    print("dis = %f" % dis)
-    print("dis_e = %f" % dis_e)
+    dis_e = 0.23459062500000002
     print("Табличное значение квантили F-распределения: %f" % fisher_dist)
     print("Статистика: %f" % (dis / dis_e))
     return 'Гипотеза не отвергается (F <= Ft)' if dis / dis_e <= fisher_dist else 'Модель неадекватна (F > Ft)'

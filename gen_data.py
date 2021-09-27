@@ -1,6 +1,5 @@
 import random
 import math
-import numpy as np
 import matplotlib.pyplot as plt
 
 
@@ -35,7 +34,7 @@ def data_gen():
         e = random.normalvariate(0, math.sqrt(0.1 * omega2))
         y.append(etta[i] + e)
 
-    return x1, x2, etta, y, 0.1 * omega2
+    return x1, x2, etta, y
 
 
 def output_data(x1, x2, y):
@@ -49,7 +48,7 @@ def output_data(x1, x2, y):
 
 
 def plotting(x1, x2, theta):
-    fig = plt.figure()
+    plt.figure()
     ax = plt.axes(projection='3d')
     ax.set_title("График зависимости незашумленного отклика от входных факторов")
 
