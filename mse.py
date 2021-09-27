@@ -35,14 +35,19 @@ def estimate(y, x):
 
 
 def dispersion(y, x, theta, n, m):
-    e = y - np.matmul(x, theta)
+    y_ =  np.matmul(x, theta)
+    print("y^ = %s" % y_)
+    e = y - y_
+    print("y - y^ = %s" % e)
     dis = np.matmul(np.transpose(e), e) / (n - m)
+    print("dis = %f" % dis)
     return dis
 
 
 def check_hypothesis(n, m, dis):
     fisher_dist = scipy.stats.f.ppf(q=1-0.05, dfn=n-m, dfd=1000000)
     dis_e = 0.23459062500000002
-    print("Табличное значение квантили F-распределения: %f" % fisher_dist)
-    print("Статистика: %f" % (dis / dis_e))
+    print("dis_e = %f" % dis_e)
+    print("Табличное значение квантили F-распределения (Ft): %f" % fisher_dist)
+    print("Статистика F: %f" % (dis / dis_e))
     return 'Гипотеза не отвергается (F <= Ft)' if dis / dis_e <= fisher_dist else 'Модель неадекватна (F > Ft)'

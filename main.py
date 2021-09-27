@@ -3,7 +3,7 @@ from mse import *
 
 """print("Генерация экспериментальных данных:")
 x1, x2, etta, y = data_gen()
-print("x1 = %s\nx2 = %s\ny = %s\netta = %s" % (x1, x2, y, etta))
+print("x1 = %s\nx2 = %s\ny = %s\netta = %s" % (np.array(x1), np.array(x2), np.array(y), np.array(etta)))
 output_data(x1, x2, y)"""
 
 n, x1, x2, y = input_data()
