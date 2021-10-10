@@ -1,3 +1,5 @@
+import math
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.linalg as npl
 import scipy.stats
@@ -14,7 +16,7 @@ def mse():
     x = fill_obs_matrix(n, x1, x2)
 
     # Оценивание параметров модели объекта
-    theta = np.array(estimate(y, x))
+    theta, inv_x = estimate(y, x)
     # m - размерность вектора неизвестных параметров
     m = len(theta)
     print("МНК-оценка оценка параметров модели объекта:\ntheta = %s" % theta)
@@ -24,6 +26,26 @@ def mse():
 
     # Проверка гипотезы об адекватности модели
     print(check_hypothesis(n, m, dis))
+
+    answer = input('Построить доверительные интервалы для каждого параметра модели регрессии? (y/n)\n')
+    if answer == 'y':
+        print("Доверительные интервалы для каждого параметра модели регрессии:")
+        confidential_assessment_theta(n, m, dis, inv_x, theta)
+
+    answer = input('Проверить гипотезу о незначимости каждого параметра модели? (y/n)\n')
+    if answer == 'y':
+        print("Проверка гипотезы о незначимости каждого параметра модели:")
+        check_hypothesis_insignificance_parameters(n, m, dis, inv_x, theta)
+
+    answer = input('Проверить гипотезу о незначимости самой регрессии? (y/n)\n')
+    if answer == 'y':
+        print("Проверка гипотезы о незначимости самой регрессии:")
+        check_hypothesis_insignificance_regression(n, m, x, y, theta)
+
+    answer = input('Рассчитать прогнозные значения для математического ожидания функции отклика? (y/n)\n')
+    if answer == 'y':
+        confidential_assessment_math_expectation(n, m, dis, inv_x, theta)
+
 
 # Функция ввода данных о выборке измерений
 def input_data():
@@ -62,7 +84,7 @@ def estimate(y, x):
     # и транспонированной на вектор наблюдений
     # theta = ((X_t*X)^(-1)*X_t)y
     theta = np.matmul(np.matmul(inv_x, x_t), y)
-    return theta
+    return np.array(theta), inv_x
 
 
 # Функция вычисления несмещенной оценки неизвестной дисперсии
@@ -81,11 +103,118 @@ def check_hypothesis(n, m, dis):
     # Вычисление значения квантили F-распределения при a=0.05,
     # n-m степенях свободы для оценки неизв. дисперсии и
     # бесконечности (очень большое число) степенях свободы для sigma_E
-    fisher_dist = scipy.stats.f.ppf(q=1-0.05, dfn=n-m, dfd=1000000)
+    fisher_dist = scipy.stats.f.ppf(q=1-0.05, dfn=n-m, dfd=10000000)
     # Значение дисперсии, используемой для генерации шумов в 1 ЛР
-    dis_e = 0.23459062500000002
+    #dis_e = 0.23459062500000002
+    dis_e = 1.40754375
     print("dis_e = %f" % dis_e)
     print("Табличное значение квантили F-распределения (Ft): %f" % fisher_dist)
     print("Статистика F: %f" % (dis / dis_e))
     # Проверка гипотезы об адекватности и возвращение соотв. значения
     return 'Гипотеза не отвергается (F <= Ft)' if dis / dis_e <= fisher_dist else 'Модель неадекватна (F > Ft)'
+
+
+# Функция построения доверительных интервалов для каждого параметра модели регрессии
+def confidential_assessment_theta(n, m, dis, inv_x, theta):
+    t = scipy.stats.t.ppf(q=1-0.05/2, df=n-m) # Квантиль распределения Стьюдента
+
+    # Расчет левой и правой границ для каждого параметра
+    for i in range(0, m):
+        sigma = math.sqrt(dis * inv_x[i][i])
+        left = theta[i] - t * sigma
+        right = theta[i] + t * sigma
+        print("%f <= theta%d <= %f" % (left, i+1, right))
+
+
+# Функция роверки гипотезы о незначимости каждого параметра модели
+def check_hypothesis_insignificance_parameters(n, m, dis, inv_x, theta):
+    fisher_dist = scipy.stats.f.ppf(q=1-0.05, dfn=m-1, dfd=n-m) # Квантиль распределения Фишера
+    for i in range(0, m):
+        f = theta[i]**2 / (dis * inv_x[i][i])       # Статистика
+        if f < fisher_dist:
+            print('Параметр theta%d незначим (%f < %f)' % (i+1, f, fisher_dist))
+        else:
+            print('Параметр theta%d значим (%f >= %f)' % (i+1, f, fisher_dist))
+
+
+# Функция проверки гипотезы о незначимости самой регрессии
+def check_hypothesis_insignificance_regression(n, m, x, y, theta):
+    y_avg = np.sum(y) / n
+    rssh = 0
+
+    for i in range(0, n):
+        rssh += (y[i] - y_avg)**2
+
+    div = y - np.matmul(x, theta)
+    rss = np.matmul(np.transpose(div), div)
+    f = ((rssh - rss) / (m - 1)) / (rss / (n - m))      # Статистика
+    fisher_dist = scipy.stats.f.ppf(q=1-0.05, dfn=m-1, dfd=n-m)    # Квантиль распределения Фишера
+
+    if f < fisher_dist:
+        print('Регрессия незначима (%f < %f)' % (f, fisher_dist))
+    else:
+        print('Регрессия значима (%f >= %f)' % (f, fisher_dist))
+
+
+# Функция рассчета прогнозных значений для математического ожидания функции отклика и самого отклика
+def confidential_assessment_math_expectation(n, m, dis, inv_x, theta):
+    x1 = 1
+    x2 = np.zeros(5)
+    left_math_exp_response = np.zeros(5)
+    right_math_exp_response = np.zeros(5)
+    left_response = np.zeros(5)
+    right_response = np.zeros(5)
+
+    t = scipy.stats.t.ppf(q=1 - 0.05 / 2, df=n - m) # Квантиль распределения Стьюдента
+
+    print("Доверительное оценивание для математического ожидания отклика:")
+    print("x1\tx2\t\t\tetta_left\tetta_right")
+    for i in range(-2, 3):
+        x2[i+2] = i / 2
+        fun = f(x1, x2[i+2])
+        # Дисперсия оценки математического ожидания функции отклика
+        sigma_math_exp_response = math.sqrt(dis * np.matmul(np.matmul(np.transpose(fun), inv_x), fun))
+        # Дисперсия оценки отклика
+        sigma_response = math.sqrt(dis * (1 + np.matmul(np.matmul(np.transpose(fun), inv_x), fun)))
+        etta = np.matmul(np.transpose(fun), theta)
+        # Левая и правая границы доверительного интервала для оценки математического ожидания функции отклика
+        left_math_exp_response[i+2] = etta - t * sigma_math_exp_response
+        right_math_exp_response[i+2] = etta + t * sigma_math_exp_response
+        # Левая и правая границы доверительного интервала для оценки отклика
+        left_response[i+2] = etta - t * sigma_response
+        right_response[i+2] = etta + t * sigma_response
+        print("%d\t%f\t%f\t%f" % (x1, x2[i+2], left_math_exp_response[i+2], right_math_exp_response[i+2]))
+
+    print("Доверительное оценивание для отклика:")
+    print("x1\tx2\t\t\tetta_left\tetta_right")
+    for i in range(0, 5):
+        print("%d\t%f\t%f\t%f" % (x1, x2[i], left_response[i], right_response[i]))
+
+    plotting_response(x1, x2, left_math_exp_response, right_math_exp_response, left_response, right_response, theta)
+
+
+# Функция построения графиков прогнозных значений и доверительной полосы для математического ожидания функции отклика
+# и для самого отклика
+def plotting_response(x1, x2, left_math_exp_response, right_math_exp_response, left_response, right_response, theta):
+    etta = np.zeros(5)
+    for i in range(0, 5):
+        etta[i] = np.matmul(np.transpose(f(x1, x2[i])), theta)
+
+    plt.Figure()
+    plt.suptitle("Прогнозные значения и доверительная полоса")
+    plt.title("для математического ожидания функции отклика")
+    plt.plot(x2, left_math_exp_response)
+    plt.plot(x2, etta)
+    plt.plot(x2, right_math_exp_response)
+    plt.xlabel("X2")
+    plt.ylabel("etta(1, x2, theta)")
+    plt.show()
+
+    plt.suptitle("Прогнозные значения и доверительная полоса")
+    plt.title("для функции отклика")
+    plt.plot(x2, left_response)
+    plt.plot(x2, etta)
+    plt.plot(x2, right_response)
+    plt.xlabel("X2")
+    plt.ylabel("y(1, x2, theta)")
+    plt.show()
