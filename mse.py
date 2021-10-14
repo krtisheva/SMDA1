@@ -128,7 +128,7 @@ def confidential_assessment_theta(n, m, dis, inv_x, theta):
 
 # Функция роверки гипотезы о незначимости каждого параметра модели
 def check_hypothesis_insignificance_parameters(n, m, dis, inv_x, theta):
-    fisher_dist = scipy.stats.f.ppf(q=1-0.05, dfn=m-1, dfd=n-m) # Квантиль распределения Фишера
+    fisher_dist = scipy.stats.f.ppf(q=1-0.05, dfn=1, dfd=n-m) # Квантиль распределения Фишера
     for i in range(0, m):
         f = theta[i]**2 / (dis * inv_x[i][i])       # Статистика
         if f < fisher_dist:
