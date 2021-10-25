@@ -8,12 +8,13 @@ from model import *
 def data_gen():
     etta = []   # вектор незашумленного отклика
     y = []      # вектор зашумленного отклика
+    var_err = []  # вектор дисперсий ошибок измерения
     x1 = []     # вектор значений первого фактора
     x2 = []     # вектор значений второго фактора
     theta = [2.5, 2, 0.02, 1.2]     # истинные значения оцениваемых параметров
     # заполнение векторов etta, x1, x2
-    for i in list(a / 2 for a in range(-2, 3)):
-        for j in list(a / 2 for a in range(-2, 3)):
+    for i in list(a / 7 for a in range(-7, 8)):
+        for j in list(a / 7 for a in range(-7, 8)):
             etta.append(model(i, j, theta))
             x1.append(i)
             x2.append(j)
@@ -26,13 +27,35 @@ def data_gen():
     # вычисление мощности сигнала
     omega2 = sum(list((etta[i] - avg) ** 2 for i in range(0, n))) / (n - 1)
 
+    answer = input('Сгенерировать гетероскедастичное возмущение? (y/n)\n')
     # генерация шума и заполнение вектора зашумленного сигнала
-    for i in range(0, n):
-        #e = random.normalvariate(0, math.sqrt(0.1 * omega2))
-        e = random.normalvariate(0, math.sqrt(0.6 * omega2))
-        y.append(etta[i] + e)
+    if answer == 'y':
+        for i in range(0, n):
+            variation = 0.1 * omega2 + 20 * x1[i] ** 2 + 20 * x2[i] ** 2
+            e = random.normalvariate(0, math.sqrt(variation))
+            y.append(etta[i] + e)
+            var_err.append(variation)
+    else:
+        for i in range(0, n):
+            variation = 0.1 * omega2
+            e = random.normalvariate(0, math.sqrt(variation))
+            y.append(etta[i] + e)
+            var_err.append(variation)
 
-    return x1, x2, etta, y
+    print("Построение графика зависимости дисперсии ошибки измерения от незашумленного отклика")
+    var_plotting([x1[i] ** 2 + x2[i] ** 2 for i in range(n)], var_err)
+
+    return x1, x2, y
+
+# Построение графика зависимости дисперсии от отклика
+def var_plotting(x1x2, var_err):
+    plt.Figure()
+    plt.suptitle("График зависимости")
+    plt.title("дисперсии ошибки измерения от незашумленного отклика")
+    plt.plot(x1x2, var_err)
+    plt.xlabel("etta")
+    plt.ylabel("error variation")
+    plt.show()
 
 
 # Функция вывода данных в файл унифицированной структуры

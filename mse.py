@@ -1,31 +1,35 @@
-import math
-import matplotlib.pyplot as plt
-import numpy as np
 import numpy.linalg as npl
 import scipy.stats
-from model import f
+import pandas as pd
+from gen_data import *
 
 
-# подпрограмма вычисления МНК-оценок параметров модели и
-# проверки гипотезы об адекватности модели
-def mse():
-    # Ввод информации о выборке наблюдений
+def lab1_2():
+    answer = input('Хотите сгенерировать новые данные? (y/n)\n')
+    if answer == 'y':
+        x1, x2, etta, y, variation = data_gen()
+        output_data(x1, x2, y)
     n, x1, x2, y = input_data()
-    y = np.array(y)
-    # Заполнение матрицы наблюдений X
-    x = fill_obs_matrix(n, x1, x2)
-
-    # Оценивание параметров модели объекта
-    theta, inv_x = estimate(y, x)
-    # m - размерность вектора неизвестных параметров
+    theta, inv_x, x = lsm(n, x1, x2, y)
     m = len(theta)
-    print("МНК-оценка оценка параметров модели объекта:\ntheta = %s" % theta)
-
     # Вычисление несмещенной оценки неизвестной дисперсии
     dis = dispersion(y, x, theta, n, m)
 
     # Проверка гипотезы об адекватности модели
     print(check_hypothesis(n, m, dis))
+
+
+def lab3():
+    answer = input('Хотите сгенерировать новые данные? (y/n)\n')
+    if answer == 'y':
+        x1, x2, etta, y, variation = data_gen()
+        output_data(x1, x2, y)
+    n, x1, x2, y = input_data()
+    theta, inv_x, x = lsm(n, x1, x2, y)
+    m = len(theta)
+
+    # Вычисление несмещенной оценки неизвестной дисперсии
+    dis = dispersion(y, x, theta, n, m)
 
     answer = input('Построить доверительные интервалы для каждого параметра модели регрессии? (y/n)\n')
     if answer == 'y':
@@ -45,6 +49,130 @@ def mse():
     answer = input('Рассчитать прогнозные значения для математического ожидания функции отклика? (y/n)\n')
     if answer == 'y':
         confidential_assessment_math_expectation(n, m, dis, inv_x, theta)
+
+
+def lab4():
+    answer = input('Хотите сгенерировать новые данные? (y/n)\n')
+    if answer == 'y':
+        x1, x2, y = data_gen()
+        output_data(x1, x2, y)
+
+    n, x1, x2, y = input_data()
+    theta, inv_x, x = lsm(n, x1, x2, y)
+
+    answer = input('Проверить данные на гетероскедастичность? (y/n)\n')
+    if answer == 'y':
+        theta_aux = breush_pagan_test(x1, x2, theta, y, x, n)
+        goldfeld_quandt_test(x1, x2, y)
+
+    v = np.zeros(shape=(n, n))
+    for i in range(n):
+        v[i, i] = 1 / (0.234590625 + 20 * x1[i] ** 2 + 20 * x2[i] ** 2)
+
+    theta1 = glsm(x, v, y)
+    theta_real = np.array([2.5, 2, 0.02, 1.2])
+    diff0 = np.transpose(theta_real - theta) @ (theta_real - theta)
+    diff1 = np.transpose(theta_real - theta1) @ (theta_real - theta1)
+    print(f'Сумма квадратов расстояний МНК-оценки от истинного значения: {diff0}')
+    print(f'Сумма квадратов расстояний ОМНК-оценки от истинного значения: {diff1}')
+
+
+# Функция проверки гипотезы о гомоскедастичности по тесту Бройша-Пагана
+def breush_pagan_test(x1, x2, theta, y, x, n):
+    var_est = 0
+    y_est = x @ theta                           # Предсказанные значения отклика
+    e_t = y - y_est                             # Остаточная вариация
+
+    # Цикл вычисления оценки дисперсии
+    for i in range(0, n):
+        var_est += e_t[i] ** 2
+    var_est /= n
+    print(f'Оценка дисперсии: {var_est}')
+
+    c = np.zeros(n)                             # Отклик для вспомогательной регрессии
+    for i in range(n):
+        c[i] = e_t[i] ** 2 / var_est            # Вычисление отклика
+
+    x_aux = np.zeros(shape=(n, 3))              # Матрица наблюдений для вспомогательной регрессии
+    for i in range(n):
+        x_aux[i] = z(x1[i], x2[i])              # Заполнение матрицы наблюдений
+
+    theta_aux, x_inv = estimate(c, x_aux)       # Оценивание параметров вспомогательной модели
+    print("МНК-оценка оценка параметров вспомогательной регрессии:\ntheta_aux = %s" % theta_aux)
+    c_est = x_aux @ theta_aux                   # Предсказанный отклик вспомогательной модели
+    c_avg = np.sum(c) / n                       # Среднее значение отклика всп. модели
+    ess = 0.0                                   # Объясненная вариация
+
+    for i in range(n):
+        ess += (c_est[i] - c_avg) ** 2          # Вычисление объясненной вариации
+
+    print("Проверка гипотезы о гомоскедастичности(Тест Бройша-Пагана):")
+    chi2_dist = scipy.stats.chi2.ppf(q=1-0.05, df=1)
+    if ess / 2 < chi2_dist:
+        print('Возмущения гомоскедастичны  (%f < %f)' % (ess / 2, chi2_dist))
+    else:
+        print('Присутствует гетероскедастичность (%f >= %f)' % (ess / 2, chi2_dist))
+    return theta_aux
+
+
+# Функция проверки гипотезы о гомоскедастичности по тесту Гольдфельда-Квандта
+def goldfeld_quandt_test(x1, x2, y):
+    d = {'x1': x1, 'x2': x2, 'sq': [x1[i] ** 2 + x2[i] ** 2 for i in range(len(y))], 'y': y}
+    df = pd.DataFrame(data=d)
+    df.sort_values(by=['sq'], inplace=True)
+    df.drop(range(75, 150, 1))
+
+    df1 = df.iloc[:75]
+    df2 = df.iloc[150:]
+
+    x1_1 = df1.iloc[:, 0].values
+    x2_1 = df1.iloc[:, 1].values
+    y1 = df1.iloc[:, 3].values
+    x_obs_1 = fill_obs_matrix(75, x1_1, x2_1)
+
+    theta1, inv_x_1 = estimate(y1, x_obs_1)
+    e1 = y1 - x_obs_1 @ theta1
+    rss1 = np.transpose(e1) @ e1
+
+    x1_2 = df2.iloc[:, 0].values
+    x2_2 = df2.iloc[:, 1].values
+    y2 = df2.iloc[:, 3].values
+    x_obs_2 = fill_obs_matrix(75, x1_2, x2_2)
+
+    theta2, inv_x_2 = estimate(y2, x_obs_2)
+    e2 = y2 - x_obs_2 @ theta2
+    rss2 = np.transpose(e2) @ e2
+
+    print("Проверка гипотезы о гомоскедастичности(тест Гольдфельда-Куандта):")
+    fisher_dist = scipy.stats.f.ppf(q=1 - 0.05, dfn=71, dfd=71)
+    if rss2 / rss1 < fisher_dist:
+        print('Возмущения гомоскедастичны  (%f < %f)' % (rss2 / rss1, fisher_dist))
+    else:
+        print('Присутствует гетероскедастичность (%f >= %f)' % (rss2 / rss1, fisher_dist))
+
+
+# подпрограмма вычисления МНК-оценок параметров модели и
+# проверки гипотезы об адекватности модели
+def lsm(n, x1, x2, y):
+    # Ввод информации о выборке наблюдений
+    y = np.array(y)
+    # Заполнение матрицы наблюдений X
+    x = fill_obs_matrix(n, x1, x2)
+
+    # Оценивание параметров модели объекта
+    theta, inv_x = estimate(y, x)
+    # m - размерность вектора неизвестных параметров
+    m = len(theta)
+    print("МНК-оценка оценка параметров модели объекта:\ntheta = %s" % theta)
+    return theta, inv_x, x
+
+# Функция вычисления оценок по ОМНК
+def glsm(x, inv_v, y):
+    x_t = np.transpose(x)
+    #inv_v = npl.pinv(v)
+    theta = npl.inv(x_t @ inv_v @ x) @ x_t @ inv_v @ y  # (X_t * V^-1 * X)^-1 X_t * V^-1 * y
+    print("ОМНК-оценка оценка параметров модели объекта:\ntheta = %s" % theta)
+    return theta
 
 
 # Функция ввода данных о выборке измерений
