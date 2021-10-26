@@ -67,7 +67,7 @@ def lab4():
 
     v = np.zeros(shape=(n, n))
     for i in range(n):
-        v[i, i] = 1 / (0.234590625 + 20 * x1[i] ** 2 + 20 * x2[i] ** 2)
+        v[i, i] = 1 / (theta_aux[0] + theta_aux[1] * x1[i] ** 2 + theta_aux[2] * x2[i] ** 2)
 
     theta1 = glsm(x, v, y)
     theta_real = np.array([2.5, 2, 0.02, 1.2])

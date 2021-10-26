@@ -23,7 +23,7 @@ def data_gen():
     # построение графика зависимости незашумленного отклика от факторов
     plotting(x1, x2, theta)
     n = len(etta)           # количество измерений
-    avg = sum(etta) / n     # стреднее значение незашумленного отклика
+    avg = sum(etta) / n     # среднее значение незашумленного отклика
     # вычисление мощности сигнала
     omega2 = sum(list((etta[i] - avg) ** 2 for i in range(0, n))) / (n - 1)
 
@@ -31,7 +31,7 @@ def data_gen():
     # генерация шума и заполнение вектора зашумленного сигнала
     if answer == 'y':
         for i in range(0, n):
-            variation = 0.1 * omega2 + 20 * x1[i] ** 2 + 20 * x2[i] ** 2
+            variation = 0.1 * omega2 + x1[i] ** 2 + x2[i] ** 2
             e = random.normalvariate(0, math.sqrt(variation))
             y.append(etta[i] + e)
             var_err.append(variation)
@@ -50,10 +50,10 @@ def data_gen():
 # Построение графика зависимости дисперсии от отклика
 def var_plotting(x1x2, var_err):
     plt.Figure()
-    plt.suptitle("График зависимости")
-    plt.title("дисперсии ошибки измерения от незашумленного отклика")
+    plt.suptitle("График зависимости дисперсии ошибки")
+    plt.title("измерения от суммы квадратов факторов")
     plt.plot(x1x2, var_err)
-    plt.xlabel("etta")
+    plt.xlabel("x1^2 + x2^2")
     plt.ylabel("error variation")
     plt.show()
 
